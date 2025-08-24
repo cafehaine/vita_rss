@@ -31,7 +31,6 @@ include_directories(
 
 add_executable(${PROJECT_NAME}
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/paf_sample.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -73,6 +72,7 @@ vita_create_vpk(${PROJECT_NAME}.vpk "${VITA_TITLEID}" ${PROJECT_NAME}.self
   VERSION "${VITA_VERSION}"
   NAME "${PROJECT_NAME}"
   FILE ${CMAKE_CURRENT_SOURCE_DIR}/cxml/main.rco main.rco
+  FILE ${CMAKE_CURRENT_SOURCE_DIR}/sce_sys sce_sys
 )
 
 vita_create_stubs(stubs_${PROJECT_NAME} ${PROJECT_NAME} exports.yml)
