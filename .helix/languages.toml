@@ -1,0 +1,15 @@
+[language-server.clangd-vita]
+command = "sh"
+args=["-c", "clangd --query-driver=${VITASDK}/bin/arm-vita-eabi-gcc,${VITASDK}/bin/arm-vita-eabi-g++"]
+
+[[language]]
+name = "c"
+language-servers = ["clangd-vita"]
+formatter = { command = "clang-format" }
+auto-format = true
+
+[[language]]
+name = "cpp"
+language-servers = ["clangd-vita"]
+formatter = { command = "clang-format" }
+auto-format = true

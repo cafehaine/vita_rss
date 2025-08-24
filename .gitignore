@@ -1,0 +1,22 @@
+# clangd
+.cache/
+compile_commands.json
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+# Stubs
+stubs_vita_rss/
+stubs_vita_rss.yml
+libpaf_sample_stub.a
+libpaf_sample_stub_weak.a
+# Build
+vita_rss
+vita_rss.self
+vita_rss.self.out
+vita_rss.vpk_param.sfo
+vita_rss.vpk.out
+vita_rss.vpk
+vita_rss.velf
+cxml/main.rco
