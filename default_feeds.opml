@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Vita RSS built-in subscriptions</title>
+  </head>
+  <body>
+    <!-- Please open pull requests to see your favorite websites added here! -->
+    <!-- https://github.com/cafehaine/vita_rss -->
+    <!-- TODO check that all these work correctly :) -->
+    <outline text="PS Vita">
+      <!-- English -->
+      <outline type="rss" xmlUrl="https://itch.io/games/tag-psvita.xml" text="itch.io, games tagged with &quot;psvita&quot;" language="en"/>
+      <outline type="rss" xmlUrl="https://www.reddit.com/r/vitahacks.rss" text="Reddit, vitahacks subreddit" language="en"/>
+      <!-- French -->
+      <outline type="rss" xmlUrl="https://gamergen.com/rss/ps-vita" text="Gamergen, flux PS Vita" language="fr"/>
+    </outline>
+    <outline text="Console hacking">
+      <!-- English -->
+      <outline type="rss" xmlUrl="https://rss-index.gbatemp.net/official.rss" text="GBAtemp.net, Latest Official News" language="en"/>
+      <outline type="rss" xmlUrl="https://www.psx-place.com/forums/-/index.rss" text="PSX-Place" language="en"/>
+      <outline type="rss" xmlUrl="https://wololo.net/feed" text="Wololo.net" language="en"/>
+      <!-- French -->
+      <outline type="rss" xmlUrl="https://www.customprotocol.com/feed/" text="Custom Protocol" language="fr"/>
+      <outline type="rss" xmlUrl="https://www.gx-mod.com/feed/" text="Gx-Mod.com" language="fr"/>
+    </outline>
+    <outline text="Gaming">
+      <!-- English -->
+      <outline type="rss" xmlUrl="https://rss-index.gbatemp.net/reviews.rss" text="GBAtemp.net, Latest Reviews" language="en"/>
+      <outline type="rss" xmlUrl="https://www.theverge.com/rss/entertainment/index.xml" text="The Verge, Entertainment" language="en"/>
+      <!-- French -->
+      <outline type="rss" xmlUrl="https://www.bendermix.fr/feed/" text="Bendermix" language="fr"/>
+      <outline type="rss" xmlUrl="https://gamergen.com/rss" text="Gamergen" language="fr"/>
+      <outline type="rss" xmlUrl="https://www.jeuxvideo.com/rss/rss.xml" text="JeuxVideo.com" language="fr"/>
+    </outline>
+  </body>
+</opml>
