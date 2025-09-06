@@ -26,8 +26,7 @@ link_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/../vitasdk
 )
 
-include_directories(
-)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third-party/rapidxml-1.13)
 
 add_executable(${PROJECT_NAME}
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
