@@ -25,10 +25,12 @@ set(VITA_APP_NAME "VitaRSS")
 set(VITA_TITLEID "CFHN00001")
 set(VITA_VERSION "01.00")
 
+add_definitions(-DVITA_VERSION=${VITA_VERSION})
+
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -Wl,-q -Wall -O2 -fno-inline -fno-builtin -fshort-wchar")
+    "${CMAKE_C_FLAGS} -Wl,-q -Wall -O2 -fno-inline -fno-builtin -fshort-wchar -DNDEBUG -g")
 set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions -Wl,-q -Wall -O2 -fno-builtin -fshort-wchar -Wno-unused-function -Wno-sign-compare"
+    "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions -Wl,-q -Wall -O2 -fno-builtin -fshort-wchar -Wno-unused-function -Wno-sign-compare -DNDEBUG -g"
 )
 set(CMAKE_CXX_STANDARD 17)
 set(CXX_STANDARD_REQUIRED ON)
@@ -39,6 +41,8 @@ enable_language(CXX ASM)
 
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../vitasdk)
 
+# Rapidxml
+add_compile_definitions(RAPIDXML_NO_EXCEPTIONS=1)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third-party/rapidxml-1.13)
 
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
@@ -86,13 +90,17 @@ vita_create_vpk(
   VERSION
   "${VITA_VERSION}"
   NAME
-  "${PROJECT_NAME}"
+  "${VITA_APP_NAME}"
   FILE
   ${CMAKE_CURRENT_SOURCE_DIR}/cxml/main.rco
   main.rco
   FILE
   ${CMAKE_CURRENT_SOURCE_DIR}/sce_sys
-  sce_sys)
+  sce_sys
+  FILE
+  ${CMAKE_CURRENT_SOURCE_DIR}/default_feeds.opml
+  default_feeds.opml
+)
 
 vita_create_stubs(stubs_${PROJECT_NAME} ${PROJECT_NAME} exports.yml)
 

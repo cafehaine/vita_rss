@@ -1,17 +1,50 @@
-#include <ctime>
+// #include <cstdint>
+// #include <ctime>
 
 #include <paf.h>
-#include <paf/std/string.h>
-#include <paf/widget/core/event.h>
+// #include <paf/std/stdc>
+// #include <paf/std/string.h>
+// #include <paf/widget/core/event.h>
+#include <psp2/io/fcntl.h>
+// #include <psp2/io/stat.h>
 #include <psp2/kernel/clib.h>
 #include <psp2/kernel/modulemgr.h>
-#include <psp2/kernel/processmgr.h>
+// #include <psp2/kernel/processmgr.h>
+#include <psp2/kernel/threadmgr/thread.h>
 #include <psp2/sysmodule.h>
 
-#include <curlpp/cURLpp.hpp>
+// #include <curlpp/cURLpp.hpp>
+// #include <psp2common/kernel/iofilemgr.h>
+// #include <pthread.h>
 #include <rapidxml.hpp>
+#include <rapidxml_print.hpp>
 
 using namespace rapidxml;
+void rapidxml::parse_error_handler(const char *what, void *where) {
+  sceClibPrintf("Failed to parse XML: %s at location %p\n", what, where);
+  sceKernelExitThread(1);
+}
+
+static const char *DEFAULT_FEEDS_PATH = "app0:/default_feeds.opml";
+static const char *USER_FEEDS_PATH = "savedata0:/feeds.opml";
+static const char *UNREAD_ARTICLES_PATH = "savedata0:/unread.xml";
+static const char *READ_ARTICLES_PATH = "savedata0:/read.xml";
+
+static const int LIBHTTP_POOLSIZE = (20 * 1000);
+
+#define MAX(X, Y) X > Y ? X : Y
+
+// this converts to string
+#define STR_(X) #X
+// this makes sure the argument is expanded before converting to string
+#define STR(X) STR_(X)
+
+static const char *USER_AGENT =
+#ifdef VITA_VERSION
+    "vita_rss/" STR(VITA_VERSION) " (+https://github.com/cafehaine/vita_rss)";
+#else
+    "vita_rss/XX.XX (+https://github.com/cafehaine/vita_rss)";
+#endif
 
 paf::Framework *g_fw;
 paf::Plugin *g_samplePlugin;
@@ -53,6 +86,8 @@ public:
   }
 
   paf::ui::ListItem *Create(CreateParam &param) {
+
+    sceClibPrintf("Creating list item %d\n", index);
 
     paf::Plugin::TemplateOpenParam openParam;
     int res = g_samplePlugin->TemplateOpen(
@@ -166,6 +201,7 @@ State *g_currentState;
 */
 
 void paf_on_load(paf::Plugin *plugin) {
+  sceClibPrintf("Paf on load…\n");
 
   g_samplePlugin = plugin;
 
@@ -196,21 +232,28 @@ void paf_on_load(paf::Plugin *plugin) {
   paf::ui::ListView *list_view =
       (paf::ui::ListView *)g_pPlaneRoot->FindChild("list_view");
 
+  sceClibPrintf("Initializing menu item factory…\n");
   auto itemFactory = new MenuItemFactory({{L"Unread articles", {}},
                                           {L"Favorited articles", {}},
                                           {L"Read articles", {}},
                                           {L"Settings", {}}});
 
+  sceClibPrintf("Setting item factory for list view…\n");
   list_view->SetItemFactory(itemFactory);
+  sceClibPrintf("Inserting segment (?)…\n");
   list_view->InsertSegment(0, 1);
+  sceClibPrintf("Setting default cell size…\n");
   list_view->SetCellSizeDefault(0, {840.0f, 70.0f, 0.0f, 0.0f});
 
   // maybe add SetSegmentHeader here?
+  sceClibPrintf("Setting segment layout type…\n");
   list_view->SetSegmentLayoutType(0, paf::ui::ListView::LAYOUT_TYPE_LIST);
+  sceClibPrintf("Inserting cells…\n");
   list_view->InsertCell(0, 0, itemFactory->entries.size());
 }
 
 int paf_main(void) {
+  sceClibPrintf("Paf main…\n");
 
   paf::Framework::InitParam fwParam;
   fwParam.mode = paf::Framework::Mode_Normal;
@@ -231,7 +274,9 @@ int paf_main(void) {
     pluginParam.stop_func = NULL;
     pluginParam.exit_func = NULL;
 
+    sceClibPrintf("Loading plugin…\n");
     paf::Plugin::LoadSync(pluginParam);
+    sceClibPrintf("Paf framework run…\n");
     paf_fw->Run();
   }
 
@@ -239,7 +284,7 @@ int paf_main(void) {
 
   return 0;
 }
-char sceUserMainThreadName[] = "paf_sample";
+char sceUserMainThreadName[] = "vita_rss";
 int sceUserMainThreadPriority = 0x10000100;
 int sceUserMainThreadCpuAffinityMask = 0x70000;
 SceSize sceUserMainThreadStackSize = 0x4000;
@@ -258,6 +303,41 @@ typedef struct _ScePafInit { // size is 0x18
   int heap_opt_param1;
   int heap_opt_param2;
 } ScePafInit;
+
+bool file_exists(const char *path) {
+  SceIoStat stat_result;
+  return sceIoGetstat(path, &stat_result) >= 0;
+}
+
+void copy_file(const char *source_path, const char *dest_path) {
+  sceClibPrintf("Copying %s over to %s…\n", source_path, dest_path);
+  SceUID source_file = sceIoOpen(source_path, SCE_O_RDONLY, 0777);
+  SceUID dest_file = sceIoOpen(dest_path, SCE_O_WRLOCK | SCE_O_CREAT, 0777);
+  uint8_t buffer[1024];
+  while (true) {
+    SceSSize read = sceIoRead(source_file, buffer, 1024);
+    sceIoWrite(dest_file, buffer, read);
+    if (read < 1024) {
+      break;
+    }
+  }
+  sceIoClose(source_file);
+  sceIoClose(dest_file);
+  sceClibPrintf("Copy done!\n");
+}
+
+xml_document<char> *load_xml(const char *path) {
+  xml_document<char> *document = new xml_document<char>;
+
+  SceUID file = sceIoOpen(path, SceIoMode::SCE_O_RDONLY, 0777);
+  auto file_size = sceIoLseek(file, 0, SceIoSeekMode::SCE_SEEK_END);
+  sceIoLseek(file, 0, SceIoSeekMode::SCE_SEEK_SET);
+  char *document_data = new char[file_size + 1];
+  sceIoRead(file, document_data, file_size);
+  sceIoClose(file);
+  document->parse<0>(document_data);
+  return document;
+}
 
 // void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp) {
@@ -284,8 +364,81 @@ int module_start(SceSize args, void *argp) {
     sceClibPrintf("[PAF PRX Loader] Failed to load the PAF prx. (return value "
                   "0x%x, result code 0x%x )\n",
                   res, load_res);
+    return 1;
   }
-  xml_document<wchar_t> document;
+
+  // Load user feeds
+  sceClibPrintf("Loading user feeds…\n");
+  if (!file_exists(USER_FEEDS_PATH)) {
+    // User feeds file does not exists, copy over default feeds
+    copy_file(DEFAULT_FEEDS_PATH, USER_FEEDS_PATH);
+  }
+  xml_document<char> *user_feeds = load_xml(USER_FEEDS_PATH);
+
+  // Load read articles
+  sceClibPrintf("Loading read articles…\n");
+  xml_document<char> *read_articles;
+  if (!file_exists(READ_ARTICLES_PATH)) {
+    read_articles = new xml_document<char>;
+    xml_node<> *root_node =
+        read_articles->allocate_node(rapidxml::node_element, "rss");
+    read_articles->append_node(root_node);
+  } else {
+    read_articles = load_xml(READ_ARTICLES_PATH);
+  }
+
+  // Load unread articles
+  xml_document<char> *unread_articles;
+  sceClibPrintf("Loading unread articles…\n");
+  if (!file_exists(UNREAD_ARTICLES_PATH)) {
+    unread_articles = new xml_document<char>;
+    xml_node<> *root_node =
+        unread_articles->allocate_node(rapidxml::node_element, "rss");
+    unread_articles->append_node(root_node);
+  } else {
+    unread_articles = load_xml(UNREAD_ARTICLES_PATH);
+  }
+
+  /*Initialize libhttp*/
+  sceClibPrintf("Initialize LIBHTTP\n");
+  sceHttpInit(LIBHTTP_POOLSIZE);
+  /*Create template*/
+  int template_id =
+      sceHttpCreateTemplate(USER_AGENT, SCE_HTTP_VERSION_1_1, SCE_TRUE);
+  /*Create connection*/
+  int connection_id = sceHttpCreateConnectionWithURL(
+      template_id, "https://pouet.chapril.org/@cafehaine.rss", SCE_TRUE);
+  /*Create request*/
+  int request_id = sceHttpCreateRequestWithURL(
+      connection_id, SCE_HTTP_METHOD_GET,
+      "https://pouet.chapril.org/@cafehaine.rss", 0);
+  /*Send request and receive response header */
+  int ret = sceHttpSendRequest(request_id, NULL, 0);
+  int status_code;
+  ret = sceHttpGetStatusCode(request_id, &status_code);
+  unsigned long long content_length;
+  ret = sceHttpGetResponseContentLength(request_id, &content_length);
+  /*Receive message body*/
+  char *buffer = new char[MAX(1024, content_length)];
+  while (content_length > 0) {
+    ret = sceHttpReadData(request_id, buffer, sizeof(buffer));
+    if (ret < 0) {
+      return 1;
+    } else if (ret == 0) {
+      break; /*The connection was closed*/
+    } else {
+      for (int counter = 0; counter < ret; counter++) {
+        sceClibPrintf("%c", buffer[counter]);
+      }
+    }
+  }
+  sceClibPrintf("\n");
+  /*Delete request*/
+  sceHttpDeleteRequest(request_id);
+  /*Library termination processing*/
+  sceHttpDeleteConnection(connection_id);
+  sceHttpDeleteTemplate(template_id);
+  sceHttpTerm();
 
   paf_main();
 
